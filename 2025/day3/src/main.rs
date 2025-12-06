@@ -73,38 +73,29 @@ impl Joltage {
         //let mut counter=0;
         let mut digits_pos: Vec<usize> = (0..MAXJOLTS).collect();
         
-        //while counter < len-MAXJOLTS {
-            for i in 0..MAXJOLTS {
-                let maxpos = len - (MAXJOLTS - i);
-                //println!("maxpos {} digits_pos[{}] {} batteries_digits[{}] {}", 
-                  //      maxpos, i, digits_pos[i], i, batteries_digits[i]);
-                        
-                for d in digits_pos[i]+1..maxpos+1 {
-                    if digits[d] > batteries_digits[i] {
-                        
-                        digits_pos[i]=d;
-                        batteries_digits[i] = digits[digits_pos[i]];
-                        //println!("{}_digit {} current_pos {}", 
-                          //  i, batteries_digits[i], d);
+        for i in 0..MAXJOLTS {
+            let maxpos = len - (MAXJOLTS - i);
+            //println!("maxpos {} digits_pos[{}] {} batteries_digits[{}] {}", 
+                //      maxpos, i, digits_pos[i], i, batteries_digits[i]);
+                    
+            for d in digits_pos[i]+1..maxpos+1 {
+                if digits[d] > batteries_digits[i] {
+                    
+                    digits_pos[i]=d;
+                    batteries_digits[i] = digits[digits_pos[i]];
+                    //println!("{}_digit {} current_pos {}", 
+                        //  i, batteries_digits[i], d);
 
-                        //shift following digits positions
-                        for j in i+1..MAXJOLTS {
-                            digits_pos[j] = d+(j - i);
-                            batteries_digits[j] = digits[digits_pos[j]];
-                        }
-                        
-                    } 
-                }
+                    //shift following digits positions
+                    for j in i+1..MAXJOLTS {
+                        digits_pos[j] = d+(j - i);
+                        batteries_digits[j] = digits[digits_pos[j]];
+                    }
+                    
+                } 
             }
+        }
             
-           /*  batterie = batteries_digits.iter()
-                .enumerate()
-                .map(|(i, &d)| d * 10_usize.pow((MAXJOLTS - i - 1) as u32)).sum();
-            println!("Largest Batterie {}", batterie);
-            
-            //counter+=1;
-         */
-       
         batterie = batteries_digits.iter()
                 .enumerate()
                 .map(|(i, &d)| d * 10_usize.pow((MAXJOLTS - i - 1) as u32)).sum();
@@ -125,7 +116,6 @@ pub fn read_document(file_path: &str) -> io::Result<Vec<usize>> {
     let mut results = Vec::new();
     for line in reader.lines() {
         let line = line?;
-        // each line is in the format Lx where L is a letter and x a number
         
         println!("Read line: {}", line);
         for num_str in line.split_whitespace() {
