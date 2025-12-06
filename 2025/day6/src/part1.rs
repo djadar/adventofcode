@@ -109,7 +109,7 @@ fn main() {
     println!("Final result: {}", result);
 
     if file_path=="test"{
-        assert!(result==3263827); //4277556);
+        assert!(result==4277556);
         return;
     }
 }
