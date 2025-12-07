@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
 
 struct Tachyonsheet {
-    matrix: Vec<Vec<&'static str>>,
+    matrix: Vec<Vec<char>>,
     number_of_possibilities: usize,
     number_of_rows: usize,
     number_of_columns: usize,
@@ -38,11 +38,11 @@ impl Tachyonsheet {
                 if self.matrix[i][j]=="S" {
                     println!("Started the beam at position ({},{})", i, j);
                     source = (i,j);
-                    self.number_of_possibilities = self.count_paths(source); //self.position_beam(source, 0);
+                    break;
                 }
             }
         }
-        
+        self.number_of_possibilities = self.count_paths(source); //self.position_beam(source, 0);
         for i in 0..self.number_of_rows {
             println!("{:?}", self.matrix[i]);
         }
@@ -71,11 +71,11 @@ impl Tachyonsheet {
 
         let symbol = self.matrix[x][y];
         let result = match symbol {
-            "S" | "|" | "." => {
+            'S' | '|' | '.' => {
                 // single continuation down
                 self.count_paths((x + 1, y))
             }
-            "^" => {
+            '^' => {
                 // split: compute left and right in parallel
                 let left_closure = || {
                     if y == 0 {
@@ -117,16 +117,14 @@ pub fn read_document(file_path: &str) -> io::Result<Tachyonsheet> {
         let line = line?;
         println!("Read line: {}", line);
         
-        let mut vec:Vec<&str> = Vec::new();
+        let mut vec: Vec<char> = Vec::new();
         
         for c in line.chars() {
-            let s: &'static str = Box::leak(c.to_string().into_boxed_str());
-
-            if s=="^"  {
+            if c == '^'  {
                 tachyonsheet.max_splits += 1;
             }
-            vec.push(s);
-        }  
+            vec.push(c);
+        } 
         
         tachyonsheet.number_of_rows += 1;
         tachyonsheet.number_of_columns = vec.len();
