@@ -35,7 +35,7 @@ impl Tachyonsheet {
                 if self.matrix[i][j]=="S" {
                     println!("Started the beam at position ({},{})", i, j);
                     source = (i,j);
-                    self.number_of_possibilities = self.position_beam(source, 0);
+                    self.number_of_possibilities = self.count_paths(source); //self.position_beam(source, 0);
                 }
             }
         }
@@ -46,7 +46,32 @@ impl Tachyonsheet {
         
     }
 
-    fn position_beam(&mut self, position: (usize,usize), mut number_of_possibilities: usize) -> usize{
+    //count all possible paths from S to the bottom
+    fn count_paths(&mut self, position: (usize,usize)) -> usize{
+        let (x, y) = position;
+        let mut result: usize=0;
+        print!("Counting paths at ({},{}) ", x, y);
+        
+        if x < self.number_of_rows && y < self.number_of_columns {
+            let symbol = self.matrix[x][y];
+            if symbol == "S" || symbol == "|" {
+                result += self.count_paths((x + 1, y));
+            } else if symbol == "^" {
+                result += self.count_paths((x, y - 1)) + self.count_paths((x, y + 1));
+            } else if symbol == "." {
+                result += self.count_paths((x + 1, y));
+            }
+        }
+        
+        
+        if x == self.number_of_rows -1 {
+            result = 1;
+        }
+        return result;
+    }
+
+
+    /* fn position_beam2(&mut self, position: (usize,usize), mut number_of_possibilities: usize) -> usize{
         let (mut x, mut y) = position;
         print!("--> ({},{}) ", x, y);
         if x < self.number_of_rows && y < self.number_of_columns {
@@ -75,7 +100,7 @@ impl Tachyonsheet {
             }
             else if symbol == "^" {
                 //number_of_possibilities +=2;
-                print!("(+2)");
+                println!("(+2)");
 
                 let pos1 = (pos.0, pos.1-1);
                 let pos2 = (pos.0, pos.1+1);
@@ -95,14 +120,15 @@ impl Tachyonsheet {
         }
         if x == self.number_of_rows -1 {
             number_of_possibilities +=1;
+            println!("One possibility: from pos {:?} {}", (x,y), number_of_possibilities);
+        
         }
         
-        
-        println!("Number of possibilities: from pos {:?} {}", (x,y), number_of_possibilities);
+        //println!("Number of possibilities so far: {}", self.number_of_possibilities);
         return number_of_possibilities;
         
     }
-                
+          */       
 }
 
 
