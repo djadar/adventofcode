@@ -7,7 +7,7 @@ const MIN_NUM: usize = 0;
 
 struct Tachyonsheet {
     matrix: Vec<Vec<&'static str>>,
-    number_of_possibilities: usize,
+    number_of_splits: usize,
     number_of_rows: usize,
     number_of_columns: usize,
     beams: Vec<(usize, usize)>, //teachyons beams positions
@@ -17,7 +17,7 @@ impl Tachyonsheet {
     fn new() -> Self {
         Tachyonsheet {
             matrix: Vec::new(),
-            number_of_possibilities: 0,
+            number_of_splits: 0,
             number_of_rows: 0,
             number_of_columns: 0,
             beams: Vec::new(),
@@ -35,7 +35,7 @@ impl Tachyonsheet {
                 if self.matrix[i][j]=="S" {
                     println!("Started the beam at position ({},{})", i, j);
                     source = (i,j);
-                    self.number_of_possibilities = self.position_beam(source, 0);
+                    self.number_of_splits = self.position_beam(source, 0);
                 }
             }
         }
@@ -46,9 +46,9 @@ impl Tachyonsheet {
         
     }
 
-    fn position_beam(&mut self, position: (usize,usize), mut number_of_possibilities: usize) -> usize{
+    fn position_beam(&mut self, position: (usize,usize), mut number_of_splits: usize) -> usize{
         let (mut x, mut y) = position;
-        print!("--> ({},{}) ", x, y);
+        print!("Positioning beam at ({},{}) ", x, y);
         if x < self.number_of_rows && y < self.number_of_columns {
            
             let pos = (x,y);
@@ -58,48 +58,42 @@ impl Tachyonsheet {
                 let pos1 = (pos.0+1, pos.1);
 
                 if pos1.0 < self.number_of_rows && pos1.1 < self.number_of_columns {
-                    number_of_possibilities += self.position_beam(pos1, 0);
+                    number_of_splits += self.position_beam(pos1, 0);
                 }
             }
             else if symbol == "." {
                 self.matrix[pos.0][pos.1] = "|";
-                print!("change to | ");
+                print!("| at {:?} ", pos);
                 self.beams.push(pos);
                 
                 let pos1 = (pos.0+1, pos.1);
 
                 if pos1.0 < self.number_of_rows && pos1.1 < self.number_of_columns {
-                    number_of_possibilities += self.position_beam(pos1, 0);
+                    number_of_splits += self.position_beam(pos1, 0);
                 }
 
             }
             else if symbol == "^" {
-                //number_of_possibilities +=2;
-                print!("(+2)");
+                number_of_splits +=1;
 
                 let pos1 = (pos.0, pos.1-1);
                 let pos2 = (pos.0, pos.1+1);
 
                 if pos1.0 < self.number_of_rows && pos1.1 < self.number_of_columns {
                     self.beams.push(pos1);
-                    number_of_possibilities += self.position_beam(pos1, 0);
+                    number_of_splits += self.position_beam(pos1, 0);
                 
                 }
                 
                 if pos2.0 < self.number_of_rows && pos2.1 < self.number_of_columns {
                     self.beams.push(pos2);
-                    number_of_possibilities += self.position_beam(pos2, 0);
+                    number_of_splits += self.position_beam(pos2, 0);
                 }
                 
             }
         }
-        if x == self.number_of_rows -1 {
-            number_of_possibilities +=1;
-        }
-        
-        
-        println!("Number of possibilities: from pos {:?} {}", (x,y), number_of_possibilities);
-        return number_of_possibilities;
+        println!("Number of splits: {}", number_of_splits);
+        return number_of_splits;
         
     }
                 
@@ -151,11 +145,11 @@ fn main() {
     println!("tachyonsheet loaded successfully {:?}", tachyonsheet.matrix);
 
     tachyonsheet.count_splits();
-    let result = tachyonsheet.number_of_possibilities;
+    let result = tachyonsheet.number_of_splits;
     println!("Final result: {}", result);
 
     if file_path=="test"{
-        let answer = 40;
+        let answer = 21;
         assert!(result==answer); 
         return;
     }
