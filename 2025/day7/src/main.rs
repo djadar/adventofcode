@@ -49,17 +49,28 @@ impl Tachyonsheet {
     fn position_beam(&mut self, position: (usize,usize), mut number_of_splits: usize) -> usize{
         let (mut x, mut y) = position;
         print!("Positioning beam at ({},{}) ", x, y);
-        if x+1 < self.number_of_rows && y < self.number_of_columns {
+        if x < self.number_of_rows && y < self.number_of_columns {
            
-            let pos = (x+1,y);
-            let symbol = self.matrix[x+1][y];
+            let pos = (x,y);
+            let symbol = self.matrix[x][y];
             print!("{} ", symbol);
-            if  symbol == "." {
+            if  symbol == "S" {
+                let pos1 = (pos.0+1, pos.1);
+
+                if pos1.0 < self.number_of_rows && pos1.1 < self.number_of_columns {
+                    number_of_splits += self.position_beam(pos1, 0);
+                }
+            }
+            else if symbol == "." {
                 self.matrix[pos.0][pos.1] = "|";
                 print!("| at {:?} ", pos);
                 self.beams.push(pos);
                 
-                number_of_splits += self.position_beam(pos, 0);
+                let pos1 = (pos.0+1, pos.1);
+
+                if pos1.0 < self.number_of_rows && pos1.1 < self.number_of_columns {
+                    number_of_splits += self.position_beam(pos1, 0);
+                }
 
             }
             else if symbol == "^" {
