@@ -40,6 +40,7 @@ impl A3Dspace {
        
        println!("initial {}", self.initial_number);
         //print distances values
+        //TODO: Redo without recursion to free the stack
         self.do_shortest_circuits_step(0);
         
     }
