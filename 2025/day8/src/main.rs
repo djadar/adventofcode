@@ -9,6 +9,8 @@ struct A3Dspace {
     circuits: Vec<Vec<(usize, usize, usize)>>,
     distances: Vec<((usize, usize, usize), (usize, usize, usize), f64)>,
     remaining_coordinates: usize,
+    initial_number: usize,
+    last_connection_x_ccordinate: u64,
 }
 impl A3Dspace {
     fn new() -> Self {
@@ -17,6 +19,8 @@ impl A3Dspace {
             circuits: Vec::new(),
             remaining_coordinates: 0,
             distances: Vec::new(),
+            initial_number: 0,
+            last_connection_x_ccordinate: 0,
         }
     }
 
@@ -31,10 +35,10 @@ impl A3Dspace {
                 self.distances.push(((x1, y1, z1), (x2, y2, z2), distance));
             }
         }
+        self.initial_number = self.remaining_coordinates;
         println!("Computed {} distances between coordinates", self.distances.len());
-        //sort distances
-        self.distances.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap());
-        println!("{:?}", self.distances);
+       
+       println!("initial {}", self.initial_number);
         //print distances values
         self.do_shortest_circuits_step(0);
         
@@ -43,6 +47,7 @@ impl A3Dspace {
     fn do_shortest_circuits_step(&mut self, mut step: usize) {
         println!("-----------Step {}-----------", step);
         
+        self.distances.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap());
         let min_distance = self.distances.first().unwrap().2;
         println!("Minimum distance is {:.2}", min_distance);
         
@@ -101,11 +106,11 @@ impl A3Dspace {
                         first_i = second_i;
                         second_i = temp;
                     }
-                    print!("Merging circuits {:?} and {:?}", self.circuits[first_i], self.circuits[second_i]);
+                    print!("Merging circuits"); // {:?} and {:?}", self.circuits[first_i], self.circuits[second_i]);
                     
                     let mut to_merge = self.circuits.remove(second_i);
                     self.circuits[first_i].append(&mut to_merge);
-                    println!("into {:?}", self.circuits[first_i]);
+                    //println!("into {:?}", self.circuits[first_i]);
                     
                 }else {
                     println!("Same circuit");
@@ -117,12 +122,14 @@ impl A3Dspace {
             println!("new circuit added");
         }
         println!("************");
-        println!("Circuits formed: {:?} remaining {}", self.circuits, self.remaining_coordinates);
+        println!("remaining {} {}", self.remaining_coordinates, circuit.0.0 * circuit.1.0);
+        //println!("Circuits formed: {:?} remaining {}", self.circuits, self.remaining_coordinates);
         
         // remove used circuit from distances
         self.distances.retain(|(c1, c2, _)| {
             !( (*c1 == circuit.0 && *c2 ==circuit.1) || (*c1 == circuit.1 && *c2 ==circuit.0) )
         });
+        
         println!("Distances remaining after forming first circuit: {}", self.distances.len());
         println!("Number of circuits so far: {}", self.circuits.len());
         let mut sizes: Vec<usize> = self.circuits.iter().map(|circuit| circuit.len()).collect();
@@ -130,19 +137,26 @@ impl A3Dspace {
 
         let sum: usize = sizes.iter().take(3).sum();
         println!("Sizes of circuits: {:?} sum {}", sizes, sum);
-        if step < MAX_IER -1{
+        
+        if self.circuits.len() == 1 && self.circuits[0].len() == self.initial_number{ //self.remaining_coordinates >0 {//
+            self.last_connection_x_ccordinate = circuit.0.0 as u64 * circuit.1.0 as u64;
+            
+        }else {
             step += 1;
             self.do_shortest_circuits_step(step);
         }
     }
 
-    fn get_three_largest_circuits_size(&self) -> usize {
+    fn get_three_largest_circuits_size(&self) -> u64 {
+        println!("Last circuit {:?}", self.circuits[self.circuits.len() -1]);
         let mut sizes: Vec<usize> = self.circuits.iter().map(|circuit| circuit.len()).collect();
         sizes.sort_unstable_by(|a, b| b.cmp(a)); // sort descending
         println!("Sizes of circuits: {:?}", sizes);
         // get the product of the sizes of the three largest circuits
         let result: usize = sizes.iter().take(3).product();
-        result
+        println!("Product {}", result);
+
+        self.last_connection_x_ccordinate
     }
 }
 
@@ -182,13 +196,14 @@ fn main() {
     let mut a3Dspace = read_document(&file_path).expect("Failed to read document");
     println!("3D space: {:?}", a3Dspace.coordinates);
     //println!("Ingredients found: {:?}", ingredients.available_ids);
+    
     a3Dspace.do_shortest_circuits();
     let result = a3Dspace.get_three_largest_circuits_size(); //get_fresh_available_ingredients();
     
     println!("Final answer is {}", result);
 
     if file_path=="test"{
-        let answer = 40;
+        let answer = 25272; //40;
         assert!(result==answer); 
         return;
     }
