@@ -45,14 +45,7 @@ impl Machine {
             .collect()
     }
 
-    fn minimum_press(&mut self){
-        //let mut number_to_activated = Vec::new();
-        
-        //println!("{:?}", Self::all_subsets_parallel(self.number_of_wirings));
-        /* for list in self.button_wiring {
-            let mut number_press = 0;
-
-        } */
+    fn minimum_press1(&mut self){
         let n = self.number_of_wirings - 1;
         let mut total = 1usize << (n + 1); // 2^(N+1)
 
@@ -93,6 +86,57 @@ impl Machine {
             
         }
         
+    }
+
+    fn minimum_press(&mut self) {
+        let n = self.number_of_wirings - 1;
+        let total = 1usize << (n + 1); // 2^(N+1)
+
+        // Clone necessary data to move into the parallel iterator
+        let button_wiring = self.button_wiring.clone();
+        let activated = self.activated.clone();
+        let min_press_ref = &mut self.min_press;
+
+        // Parallel iteration over all masks
+        let min_press_found = (1..total)
+            .into_par_iter()
+            .filter_map(|mask| {
+                let mut subset = Vec::new();
+                let mut press = 0;
+
+                for i in 0..=n {
+                    if (mask & (1 << i)) != 0 {
+                        let vec = self.button_wiring[i].clone();
+                        for v in vec {
+                            if subset.contains(&v) {
+                                subset.retain(|x| *x != v);
+                            } else {
+                                subset.push(v);
+                            }
+                        }
+                        press += 1;
+
+                        // early exit if press exceeds known min
+                        if press >= *min_press_ref {
+                            return None;
+                        }
+                    }
+                }
+
+                subset.sort();
+                if subset == activated {
+                    Some(press)
+                } else {
+                    None
+                }
+            })
+            .min(); // get the minimum press across all threads
+
+        if let Some(min_press) = min_press_found {
+            *min_press_ref = min_press;
+        }
+
+        println!("Minimum press found: {}", self.min_press);
     }
 }
 
