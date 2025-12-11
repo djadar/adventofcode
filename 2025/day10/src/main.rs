@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead};
 use std::path::Path;
 use rayon::prelude::*;
-
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Default, Debug)]
 struct Machine {
@@ -10,7 +10,7 @@ struct Machine {
     activated: Vec<String>,
     button_wiring: Vec<Vec<String>>,
     number_of_buttons: usize,
-    joltage: Vec<usize>,
+    joltage: Vec<String>,
     number_of_wirings: usize,
     min_press:usize,
 }
@@ -45,98 +45,222 @@ impl Machine {
             .collect()
     }
 
-    fn minimum_press1(&mut self){
+    fn minimum_press(&mut self) {
         let n = self.number_of_wirings - 1;
-        let mut total = 1usize << (n + 1); // 2^(N+1)
+        let elements: Vec<usize> = (0..=n).collect();
+        let mut length = 10;
+        let size: usize = self.joltage
+            .par_iter()
+            .map(|s| s.parse::<usize>().unwrap())
+            .sum();
+        let mut length = 1;
+        let mut found = false;
 
-        for mask in 1..total {
-            let mut subset = Vec::new();
-            let mut press = 0;
-            for i in 0..=n {
-                if (mask & (1 << i)) != 0 {
-                    //permutation i 
-                    //subset.push(i);
+        let sum:usize = (0..n).into_par_iter().map(|v| self.button_wiring[v].len()).sum();
+        println!(" sum {} size{}", sum, size);
+
+        /* if self.button_wiring.len() < size {
+            length = self.button_wiring.len();
+        }   */   
+        if sum < size {
+            length = sum;
+        }
+        println!("length {}", length);
+        //return;
+        // Wrap shared state in Arc<Mutex<>>
+        let min_press = Arc::new(Mutex::new(self.min_press));
+        let found_flag = Arc::new(Mutex::new(false));
+
+        while !*found_flag.lock().unwrap() {
+            let total = (n + 1).pow(length as u32);
+
+            (0..total).into_par_iter().for_each(|i| {
+                // Check if already found to skip unnecessary work
+                if *found_flag.lock().unwrap() {
+                    return;
+                }
+
+                // Build sequence
+                let mut seq = Vec::with_capacity(length);
+                let mut num = i;
+                for _ in 0..length {
+                    seq.push(elements[num % (n + 1)]);
+                    num /= n + 1;
+                }
+                seq.reverse();
+                println!("length={}: seq={:?}", length, seq);
+                let total_size: usize = seq.par_iter().map(|v| self.button_wiring[*v].len()).sum();
+                if total_size !=size {
+                    return;
+                }
+                // Compute subset
+                let mut subset = Vec::new();
+                let mut press = 0;
+                for idx in seq {
+                    let vec = self.button_wiring[idx].clone();
+                    subset.extend(vec);
+                    press += 1;
+                }
+                
+
+                subset.sort();
+                if subset == self.joltage {
+                    let mut min_lock = min_press.lock().unwrap();
+                    if press < *min_lock {
+                        *min_lock = press;
+                        *found_flag.lock().unwrap() = true;
+                    }
+                }
+
+                println!(
+                    "length={}: subset {} and press {} min {}",
+                    length,
+                    subset.len(),
+                    press,
+                    *min_press.lock().unwrap()
+                );
+            });
+
+            length += 1;
+        }
+
+        // Update struct's min_press
+        self.min_press = *min_press.lock().unwrap();
+    }
+
+    fn minimum_press_1(&mut self){
+        let n = self.number_of_wirings - 1; 
+        let elements: Vec<usize> = (0..=n).collect();
+        let mut length = 1;
+        let mut found = false;
+        while !found {
+            let total = (n + 1).pow(length as u32); // total sequences of this length
+            let mut end = false;
+            for i in 0..total {
+                
+                let mut seq = Vec::with_capacity(length);
+                let mut num = i;
+
+                for _ in 0..length {
+                    seq.push(elements[num % (n + 1)]);
+                    num /= n + 1;
+                }
+
+                // The sequence is in reverse order; reverse to match natural order
+                seq.reverse();
+                println!("seq={:?}", seq);
+                let mut subset = Vec::new();
+                let mut press = 0;
+                for i in seq {
                     let vec = self.button_wiring[i].clone();
-                    println!("vec {:?}", vec);
+                    //println!("vec {:?}", vec);
                     for j in 0..vec.len() {
                         //println!("{}", vec[j]);
-                        if subset.contains(&vec[j]) {
-                            //println!("B {:?}", subset);
-                            //subset.remove(j);
-                            subset.retain(|x| *x != vec[j]);
-                            //println!("A {:?}", subset);
-                        }else{
-                            subset.push(vec[j].clone());
-                        }
+                        subset.push(vec[j].clone());
+                        
                     }
-                    press +=1;
-                    if press >= self.min_press {
-                        break;
-                    }
-                } 
-            }
-            subset.sort();
-            if subset==self.activated {
-                if press < self.min_press {
-                    self.min_press = press;
                 }
+                press +=1;
+                
+                subset.sort();
+                if subset==self.joltage {
+                    if press < self.min_press {
+                        self.min_press = press;
+                        found==true;
+                    }
+                }
+                
+                 
+                println!("length={}: subset {:?} and press {} min {}", 
+                    length, subset, press, self.min_press);
             }
-            println!("{}: subset {:?} and press {} min {}", 
-                mask, subset, press, self.min_press);
             
+            length+=1;
         }
+
         
     }
 
-    fn minimum_press(&mut self) {
+    fn minimum_press_2(&mut self) {
         let n = self.number_of_wirings - 1;
-        let total = 1usize << (n + 1); // 2^(N+1)
+        let elements: Vec<usize> = (0..=n).collect();
+        let size: usize = self.joltage
+        .par_iter()
+        .map(|s| s.parse::<usize>().unwrap())
+        .sum();
+        let mut length = 1;
+        let mut found = false;
 
-        // Clone necessary data to move into the parallel iterator
-        let button_wiring = self.button_wiring.clone();
-        let activated = self.activated.clone();
-        let min_press_ref = &mut self.min_press;
+        let sum = elements.par_iter().map(|v| self.button_wiring[*v].len()).sum();
+        println!(" sum {} size{}", sum, size);
+                
+        if sum < size {
+            length = sum;
+        }
+        // Wrap min_press in Arc<Mutex<>> for thread-safe updates
+        let min_press = Arc::new(Mutex::new(self.min_press));
 
-        // Parallel iteration over all masks
-        let min_press_found = (1..total)
-            .into_par_iter()
-            .filter_map(|mask| {
+        while !found {
+            let total = (n + 1).pow(length as u32);
+            //let end = Arc::new(Mutex::new(false));
+
+            // Parallel iteration over i
+            (0..total).into_par_iter().for_each(|i| {
+                let mut seq = Vec::with_capacity(length);
+                let mut num = i;
+
+                for _ in 0..length {
+                    seq.push(elements[num % (n + 1)]);
+                    num /= n + 1;
+                }
+                seq.reverse();
+                let total_size: usize = seq.par_iter().map(|v| self.button_wiring[*v].len()).sum();
+                println!("seq={:?}, total_size{}", seq, total_size);
+                /* if total_size !=size {
+                    return;
+                } */
                 let mut subset = Vec::new();
                 let mut press = 0;
 
-                for i in 0..=n {
-                    if (mask & (1 << i)) != 0 {
-                        let vec = self.button_wiring[i].clone();
-                        for v in vec {
-                            if subset.contains(&v) {
-                                subset.retain(|x| *x != v);
-                            } else {
-                                subset.push(v);
-                            }
-                        }
-                        press += 1;
+                for idx in seq {
+                    let vec = self.button_wiring[idx].clone();
+                    for v in vec {
+                        subset.push(v);
+                    }
+                    press += 1;
+                }
 
-                        // early exit if press exceeds known min
-                        if press >= *min_press_ref {
-                            return None;
+                /* if subset.len() > self.joltage.len() {
+                    *end.lock().unwrap() = true;
+                } else { */
+                    subset.sort();
+                    if subset == self.joltage {
+                        let mut min_lock = min_press.lock().unwrap();
+                        if press < *min_lock {
+                            *min_lock = press;
+                            found==true;
                         }
                     }
-                }
+                //}
 
-                subset.sort();
-                if subset == activated {
-                    Some(press)
-                } else {
-                    None
-                }
-            })
-            .min(); // get the minimum press across all threads
-
-        if let Some(min_press) = min_press_found {
-            *min_press_ref = min_press;
+                println!(
+                    "length={}: subset {:?} and press {} min {}",
+                    length,
+                    subset,
+                    press,
+                    *min_press.lock().unwrap()
+                );
+            });
+/* 
+            if *end.lock().unwrap() {
+                found = true;
+            }
+ */
+            length += 1;
         }
 
-        println!("Minimum press found: {}", self.min_press);
+        // Update self.min_press at the end
+        self.min_press = *min_press.lock().unwrap();
     }
 }
 
@@ -159,7 +283,7 @@ impl Manual {
         for machine in &mut self.machines {
             machine.minimum_press();
             result += machine.min_press;
-            //break;
+            break;
         }
         result
     }
@@ -218,10 +342,10 @@ pub fn read_document(file_path: &str) -> io::Result<Manual> {
                 if coordinates.len()> 0 {
                     
                     let mut vec = Vec::new();
-                    for i in 0.. coordinates.len() {
+                    for i in 0..coordinates.len() {
                         match coordinates[i].parse::<usize>() {
                             Ok(num) => {
-                                vec.push(num)
+                                vec.extend(vec![i.to_string(); num]);
                             },
                             Err(e) => eprintln!("Error parsing number: {}", e),
                         }
@@ -252,14 +376,13 @@ fn main() {
 
     let mut manual = read_document(&file_path).expect("Failed to read document");
     println!("Manual {:?}", manual);
-    //println!("Ingredients found: {:?}", ingredients.available_ids);
-     
-    let result = manual.fewest_button_press(); //get_fresh_available_ingredients();
+    
+    let result = manual.fewest_button_press(); 
     
     println!("Final answer is {}", result);
 
     if file_path=="test"{
-        let answer = 7;
+        let answer = 33;
         assert!(result==answer); 
         return;
     }
