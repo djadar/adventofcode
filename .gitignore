@@ -1,7 +1,6 @@
 /target
 2024/
-2025/day[9-9]/
-2025/day1[0-2]/
 *.log
 temp/
 target/
+*copy*
